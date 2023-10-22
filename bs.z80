@@ -1,0 +1,73 @@
+; Z80 Assembly Barrel Shifter
+;
+; Inputs:
+;   HL = Value to be shifted
+;   DE = Amount to shift (only lower 8-bits used)
+;   A  = Direction (0 for right, non-zero for left)
+;
+; Output:
+;   HL = Shifted value
+
+BARREL_SHIFT:
+    ; Stage 1: Shift by up to 15 bits left or right
+    LD A, E           ; Load amount to A
+    AND %00001111     ; Mask out lower 4 bits (0-15)
+    LD B, A           ; Store the mask to B for loop counter
+
+    ; Shift loop for Stage 1
+SHIFT_LOOP_1:
+    LD A, B
+    OR A              ; Check if B (the counter) is zero
+    RET Z             ; If zero, exit loop
+
+    ; Check direction
+    LD A, D
+    OR A              ; Check if direction is 0 (right) or non-zero (left)
+    JR Z, RIGHT_SHIFT_1
+    ; Left Shift
+    SLA L             ; Shift lower byte left
+    RL H              ; Rotate upper byte left through carry
+    JR SHIFT_LOOP_1_END
+
+RIGHT_SHIFT_1:
+    ; Right Shift
+    SRL H             ; Shift upper byte right
+    RR L              ; Rotate lower byte right through carry
+
+SHIFT_LOOP_1_END:
+    DJNZ SHIFT_LOOP_1 ; Decrement B and repeat if not zero
+
+    ; Stage 2: Shift by multiples of 16
+    LD A, E           ; Load amount to A
+    RRCA              ; Rotate right to divide by 16
+    RRCA
+    RRCA
+    RRCA
+    LD B, A           ; Store to B for loop counter
+
+    ; Shift loop for Stage 2
+SHIFT_LOOP_2:
+    LD A, B
+    OR A              ; Check if B (the counter) is zero
+    RET Z             ; If zero, exit loop
+
+    ; Check direction
+    LD A, D
+    OR A              ; Check if direction is 0 (right) or non-zero (left)
+    JR Z, RIGHT_SHIFT_2
+    ; Left Shift by 16
+    LD H, L           ; Move lower byte to upper byte
+    XOR A, A          ; Clear A
+    LD L, A           ; Clear lower byte
+    JR SHIFT_LOOP_2_END
+
+RIGHT_SHIFT_2:
+    ; Right Shift by 16
+    LD L, H           ; Move upper byte to lower byte
+    XOR A, A          ; Clear A
+    LD H, A           ; Clear upper byte
+
+SHIFT_LOOP_2_END:
+    DJNZ SHIFT_LOOP_2 ; Decrement B and repeat if not zero
+
+    RET               ; Return to caller
