@@ -3,48 +3,16 @@
 
 Forth-83 code for a barrel shifter
 
+bs.f
 
-barrel shifter:
 
-```forth
-\ Define constants for shift directions
-1 CONSTANT LEFT
--1 CONSTANT RIGHT
+To make the Z80 assembly barrel shifter code faster and more efficient, we can make the following changes:
 
-\ Word to perform the actual shifting
-: DO-SHIFT ( n dir -- shifted )
-    DUP LEFT = IF
-        LSHIFT
-    ELSE
-        DUP RIGHT = IF
-            RSHIFT
-        THEN
-    THEN ;
+Use a table lookup for the shift amount: Instead of using a loop to shift the value by the specified amount, we can use a table lookup to perform the shift in a single instruction. This will be much faster, especially for large shift amounts.
+Use a carry flag to track the shift direction: Instead of using a separate variable to track the shift direction, we can use the carry flag. This will save us one register and make the code more concise.
+Eliminate unnecessary branches: There are a few unnecessary branches in the code that we can eliminate. This will make the code more efficient and easier to optimize.
+Here is a rewritten version of the barrel shifter code that incorporates these changes:
 
-\ Main barrel shifter routine
-: BARREL-SHIFT ( value direction amount -- shifted-value )
-    \ Stage 1: Shift by up to 15 bits left or right
-    2DUP AND SWAP \ Mask out lower 4 bits for stage 1
-    SWAP 16 MOD   \ Calculate the amount to shift in stage 1
-    DO-SHIFT
+bs2.z80
 
-    \ Stage 2: Shift by multiples of 16
-    ROT 16 /MOD SWAP DROP \ Get the number of 16-bit chunks
-    DUP LEFT = IF
-        16 LSHIFT
-    ELSE
-        DUP RIGHT = IF
-            16 RSHIFT
-        THEN
-    THEN
 
-    \ Combine the results from stages 1 and 2
-    OR ;
-```
-
-test  `BARREL-SHIFT`:
-
-```forth
-1000 4 LEFT BARREL-SHIFT .  \ Shift 1000 left by 4 positions (result: 16000)
-500 3 RIGHT BARREL-SHIFT . \ Shift 500 right by 3 positions (result: 62)
-```
