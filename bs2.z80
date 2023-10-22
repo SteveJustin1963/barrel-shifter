@@ -1,1 +1,45 @@
 ;
+; Z80 Assembly Barrel Shifter
+;
+; Inputs:
+;  HL = Value to be shifted
+;  DE = Amount to shift (only lower 8-bits used)
+;
+; Output:
+;  HL = Shifted value
+
+BARREL_SHIFT:
+  ; Load the shift amount to A
+  LD A, E
+
+  ; Table lookup to perform the shift
+  LDX A
+  LD B, SHIFT_TABLE(X)
+
+  ; Shift the value by the specified amount
+  SRL (HL)
+  SRL (HL)
+  SRL (HL)
+  SRL (HL)
+  SRL (HL)
+  SRL (HL)
+  SRL (HL)
+  SRL (HL)
+  
+  ; Rotate the upper byte left or right through the carry flag
+  LD A, D
+  AND %00000001
+  JR Z, RIGHT_SHIFT
+  RL H
+  JR SHIFT_END
+
+RIGHT_SHIFT:
+  RR H
+
+SHIFT_END:
+  ; Return to caller
+  RET
+
+; Shift table
+SHIFT_TABLE:
+  .db 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
