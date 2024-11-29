@@ -1,0 +1,125 @@
+;============================================
+; Enhanced Z80 Barrel Shifter
+;============================================
+; Input:  HL = Value to shift
+;         A  = Number of positions (0-255)
+;         C  = Operation type:
+;              Bit 0: Direction (0=left, 1=right)
+;              Bit 1: Type (0=logical, 1=arithmetic)
+; Output: HL = Result
+;         F  = Flags affected (Z=1 if result is zero)
+;============================================
+
+        ORG     8000H
+
+BARREL_SHIFT:
+        PUSH    BC              ; Save registers
+        PUSH    DE
+        LD      B, A           ; Store shift count
+        LD      A, C           ; Get operation type
+        LD      (SHIFT_TYPE), A
+        LD      A, B           ; Restore shift count
+        OR      A              ; Test if zero
+        JR      Z, BS_EXIT     ; Exit if no shift needed
+
+        ; Handle shifts >= 16
+        CP      16             ; Compare with 16
+        JR      C, STAGE2      ; Jump if < 16
+        LD      A, B           ; Get original count
+        SUB     16            ; Subtract 16
+        LD      B, A           ; Store remaining count
+        LD      A, (SHIFT_TYPE)
+        BIT     0, A           ; Test direction
+        JR      NZ, RIGHT16
+
+LEFT16:
+        LD      H, L           ; Move lower byte to upper
+        LD      L, 0           ; Clear lower byte
+        JR      STAGE2
+
+RIGHT16:
+        BIT     1, A           ; Test if arithmetic
+        JR      Z, RIGHT16_LOG
+        BIT     7, H           ; Test sign bit
+        JR      Z, RIGHT16_LOG
+        LD      L, H           ; Move upper byte to lower
+        LD      H, 0FFH        ; Fill with 1's for sign extension
+        JR      STAGE2
+
+RIGHT16_LOG:
+        LD      L, H           ; Move upper byte to lower
+        LD      H, 0           ; Clear upper byte
+
+STAGE2:
+        ; Handle remaining bits (0-15)
+        LD      A, B           ; Get remaining count
+        OR      A              ; Test if zero
+        JR      Z, BS_EXIT     ; Exit if done
+        LD      B, A           ; Restore count for loop
+        LD      A, (SHIFT_TYPE)
+        BIT     0, A           ; Test direction
+        JR      NZ, SHIFT_RIGHT
+
+SHIFT_LEFT:
+SHIFT_L_LOOP:
+        SLA     L             ; Shift lower byte
+        RL      H             ; Rotate upper byte with carry
+        DJNZ    SHIFT_L_LOOP
+        JR      BS_EXIT
+
+SHIFT_RIGHT:
+        BIT     1, A           ; Test if arithmetic
+        JR      NZ, SHIFT_RIGHT_A
+
+SHIFT_RIGHT_L:                 ; Logical right shift
+        SRL     H             ; Shift upper byte
+        RR      L             ; Rotate lower byte with carry
+        DJNZ    SHIFT_RIGHT_L
+        JR      BS_EXIT
+
+SHIFT_RIGHT_A:                 ; Arithmetic right shift
+        SRA     H             ; Shift upper byte keeping sign
+        RR      L             ; Rotate lower byte with carry
+        DJNZ    SHIFT_RIGHT_A
+
+BS_EXIT:
+        LD      A, H           ; Set zero flag if result is zero
+        OR      L
+        POP     DE            ; Restore registers
+        POP     BC
+        RET
+
+SHIFT_TYPE:  
+        DB      0             ; Storage for shift type
+
+;============================================
+; Test Program
+;============================================
+TEST_SHIFTS:
+        ; Test 1: Left logical shift
+        LD      HL, 1234H
+        LD      A, 4
+        LD      C, 0
+        CALL    BARREL_SHIFT   ; Should be 12340H
+    
+        ; Test 2: Right logical shift
+        LD      HL, 1234H
+        LD      A, 4
+        LD      C, 1
+        CALL    BARREL_SHIFT   ; Should be 0123H
+    
+        ; Test 3: Right arithmetic shift
+        LD      HL, 8234H
+        LD      A, 4
+        LD      C, 3
+        CALL    BARREL_SHIFT   ; Should be F823H
+    
+        ; Test 4: Large shift left
+        LD      HL, 1234H
+        LD      A, 20
+        LD      C, 0
+        CALL    BARREL_SHIFT   ; Should be 0000H
+    
+        RET
+
+        END
