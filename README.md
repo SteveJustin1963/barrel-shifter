@@ -187,3 +187,131 @@ The operation types in register C are:
 - 11 = Arithmetic right shift
 
 
+## additional bit manipulation features:
+
+1. Rotation Operations
+```assembly
+; Rotate with carry preservation
+ROT_LEFT:
+        PUSH    AF
+        LD      B, A     ; Shift count
+ROT_L_LOOP:
+        RL      L        ; Rotate low byte through carry
+        RL      H        ; Rotate high byte through carry
+        DJNZ    ROT_L_LOOP
+        POP     AF
+        RET
+
+; Rotate without carry (circular)
+CIRC_ROT:
+        AND     0FH      ; Mask to 0-15 range
+        RET     Z        ; Return if zero
+        LD      B, A     ; Counter
+CIRC_LOOP:
+        SLA     L        ; Shift left low byte
+        RL      H        ; Rotate high byte with carry
+        JR      NC, CIRC_SKIP
+        SET     0, L     ; Set bit 0 if overflow
+CIRC_SKIP:
+        DJNZ    CIRC_LOOP
+        RET
+```
+
+2. Bit Counting/Testing
+```assembly
+; Count set bits in HL
+COUNT_BITS:
+        LD      B, 16    ; 16 bits to check
+        LD      C, 0     ; Bit counter
+COUNT_LOOP:
+        SLA     L        ; Shift left low byte
+        RL      H        ; Rotate high byte
+        JR      NC, COUNT_NEXT
+        INC     C        ; Increment if bit was set
+COUNT_NEXT:
+        DJNZ    COUNT_LOOP
+        LD      A, C     ; Return count in A
+        RET
+
+; Test if power of 2
+IS_POWER2:
+        LD      A, H     ; Check if only one bit set
+        OR      L        ; Combine both bytes
+        RET     Z        ; Return if zero
+        LD      C, A     ; Save value
+        DEC     A        ; Subtract 1
+        AND     C        ; AND with original
+        RET             ; Z flag set if power of 2
+```
+
+3. Bit Reversal
+```assembly
+; Reverse bits in HL
+REV_BITS:
+        LD      B, 8     ; 8 bits per byte
+        LD      DE, 0    ; Result
+REV_LOOP:
+        SLA     L        ; Shift left L
+        RR      E        ; Rotate right into E
+        SLA     H        ; Shift left H
+        RR      D        ; Rotate right into D
+        DJNZ    REV_LOOP
+        EX      DE, HL   ; Put result in HL
+        RET
+```
+
+4. Bit Field Operations
+```assembly
+; Extract bit field (A=start bit, B=length)
+GET_FIELD:
+        PUSH    BC
+        LD      C, A     ; Save start bit
+        ; First shift right to start bit
+FIELD_ALIGN:
+        OR      A        ; Check if zero
+        JR      Z, FIELD_MASK
+        SRL     H        ; Shift right
+        RR      L
+        DEC     C
+        JR      NZ, FIELD_ALIGN
+FIELD_MASK:
+        ; Create mask of length B
+        LD      A, B     ; Get length
+        LD      C, 0FFH  ; Start with all 1s
+MAKE_MASK:
+        SLA     C        ; Shift left
+        DEC     A
+        JR      NZ, MAKE_MASK
+        LD      A, L     ; Get result
+        AND     C        ; Mask off unwanted bits
+        LD      L, A     ; Store back
+        LD      H, 0     ; Clear high byte
+        POP     BC
+        RET
+```
+
+5. Leading/Trailing Zero Count
+```assembly
+; Count leading zeros
+CLZ:
+        LD      B, 16    ; Counter
+        LD      A, H     ; Start with high byte
+CLZ_LOOP:
+        BIT     7, A     ; Test highest bit
+        RET     NZ       ; Return if found 1
+        SLA     H        ; Shift left high byte
+        RL      L        ; Rotate low byte
+        DEC     B        ; Decrement counter
+        JR      NZ, CLZ_LOOP
+        LD      A, B     ; Return count in A
+        RET
+```
+
+Each of these features adds useful functionality:
+1. Rotation operations for circular shifts
+2. Bit counting for population count operations
+3. Bit reversal for endianness changes
+4. Bit field extraction for packed data handling
+5. Leading zero count for normalization operations
+
+
