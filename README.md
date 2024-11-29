@@ -166,13 +166,24 @@ add:
 
 
 //////////////
-To make the Z80 assembly barrel shifter code faster and more efficient, we can make the following changes:
 
-Use a table lookup for the shift amount: Instead of using a loop to shift the value by the specified amount, we can use a table lookup to perform the shift in a single instruction. This will be much faster, especially for large shift amounts.
-Use a carry flag to track the shift direction: Instead of using a separate variable to track the shift direction, we can use the carry flag. This will save us one register and make the code more concise.
-Eliminate unnecessary branches: There are a few unnecessary branches in the code that we can eliminate. This will make the code more efficient and easier to optimize.
-Here is a rewritten version of the barrel shifter code that incorporates these changes:
+## 
+Z80 assembly barrel shifter
 
-bs2.z80
+I'll recreate the Z80 assembly barrel shifter code:
+
+This implementation includes:
+1. Full 16-bit shift support
+2. Both logical and arithmetic shifts
+3. Two-stage shifting process (16-bit chunks then remainder)
+4. Register preservation
+5. Zero flag support
+6. Test program
+
+The operation types in register C are:
+- 00 = Logical left shift
+- 01 = Logical right shift
+- 10 = Arithmetic left shift
+- 11 = Arithmetic right shift
 
 
